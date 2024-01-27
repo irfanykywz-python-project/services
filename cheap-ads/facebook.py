@@ -776,6 +776,7 @@ class Facebook:
                 'type': '',
                 'message': 'auto-join.txt masih kosong'
             })
+            return None
         else:
             groupList = readGroup.split('\n')
 
@@ -793,6 +794,8 @@ class Facebook:
                 # print(url)
                 await self.tab.goto(convertUrlToMobile(url))
                 await self.tab.wait_loading(timeout=5)
+                await self.tab.wait_tag('h1[dir]', timeout=5)
+                await asyncio.sleep(5)
             else:
                 print('url invalid, skip')
                 continue
@@ -804,9 +807,9 @@ class Facebook:
                 continue
 
             # do join
-            await asyncio.sleep(5)
             await self.tab.wait_tag_click("div[aria-label*='Gabung']", timeout=5)
             await self.tab.wait_loading(timeout=5)
+            await asyncio.sleep(5)
 
             # check question
             soup = BeautifulSoup(await self.tab.html, "html.parser")
@@ -814,24 +817,35 @@ class Facebook:
                 print('question exist answer...')
 
                 # textarea
-                await self.tab.mouse_click_element_rect("div[aria-label*='Pertanyaan'] textarea")
-                await self.tab.keyboard_send(string=random.choice(answerText))
-                await asyncio.sleep(2)
+                if textarea := soup.select("div[aria-label*='Pertanyaan'] textarea"):
+                    print('textarea found, handle it')
+                    for index, input in enumerate(textarea):
+                        await self.tab.js_code(self.scrollTo("div[aria-label*='Pertanyaan'] textarea"))
+                        await self.tab.mouse_click_element_rect("div[aria-label*='Pertanyaan'] textarea")
+                        await self.tab.keyboard_send(string=random.choice(answerText))
+                        await asyncio.sleep(2)
 
                 # checkbox
-                await self.tab.js_code("""
-                document.querySelectorAll("div[aria-label*='Pertanyaan'] input[type=checkbox]")[0].click()
-                """)
-                await asyncio.sleep(2)
+                if checkbox := soup.select("div[aria-label*='Pertanyaan'] input[type=checkbox]"):
+                    print('checkbox found, handle it')
+                    for index, input in enumerate(checkbox):
+                        await self.tab.js_code(f"""
+                        document.querySelectorAll("div[aria-label*='Pertanyaan'] input[type=checkbox]")[{index}].click()
+                        """)
+                        await asyncio.sleep(2)
 
                 # radio
-                await self.tab.js_code("""
-                document.querySelectorAll("div[aria-label*='Pertanyaan'] input[type=radio]")[0].click()
-                """)
-                await asyncio.sleep(2)
+                if radio := soup.select("div[aria-label*='Pertanyaan'] input[type=checkbox]"):
+                    print('text area input found, handle it')
+                    await self.tab.js_code(self.scrollTo("div[aria-label*='Pertanyaan'] input[type=radio]"))
+                    await self.tab.js_code("""
+                    document.querySelectorAll("div[aria-label*='Pertanyaan'] input[type=radio]")[0].click()
+                    """)
+                    await asyncio.sleep(2)
 
 
                 # submit
+                await self.tab.js_code(self.scrollTo("div[aria-label*='Pertanyaan'] div[aria-label*='Kirim'][role=button]:not([aria-disabled]"))
                 await self.tab.wait_tag_click("div[aria-label*='Pertanyaan'] div[aria-label*='Kirim'][role=button]:not([aria-disabled]", timeout=5)
                 await self.tab.wait_loading(timeout=5)
                 await asyncio.sleep(5)
